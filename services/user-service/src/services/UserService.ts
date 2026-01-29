@@ -101,6 +101,21 @@ export class UserService {
         return user;
     }
 
+    async findById(userId: number): Promise<User> {
+        const user = await this.userRepository.findOne({
+            where: { id: userId, isDeleted: false }
+        });
+
+        if (!user) {
+            throw new Error('User not found');
+        }
+
+        // Strip sensitive data before returning
+        // We cast to User because we are returning a subset of the User entity
+        const { password, emailToken, ...safeUser } = user;
+        return safeUser as User;
+    }
+
     private generateToken(payload: object, expiresIn: number): string {
         const options: SignOptions = { expiresIn };
         return jwt.sign(payload, this.jwtSecret, options);

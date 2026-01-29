@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<coverage generated="1769675717029" clover="3.2.0">
+  <project timestamp="1769675717029" name="All files">
+    <metrics statements="42" coveredstatements="23" conditionals="10" coveredconditionals="4" methods="6" coveredmethods="4" elements="58" coveredelements="31" complexity="0" loc="42" ncloc="42" packages="1" files="1" classes="1"/>
+    <file name="UserService.ts" path="C:\GIT\personal\tokopaedi-microservices\services\user-service\src\services\UserService.ts">
+      <metrics statements="42" coveredstatements="23" conditionals="10" coveredconditionals="4" methods="6" coveredmethods="4"/>
+      <line num="10" count="4" type="stmt"/>
+      <line num="11" count="4" type="stmt"/>
+      <line num="12" count="4" type="stmt"/>
+      <line num="16" count="2" type="stmt"/>
+      <line num="17" count="2" type="cond" truecount="2" falsecount="0"/>
+      <line num="18" count="1" type="stmt"/>
+      <line num="21" count="1" type="stmt"/>
+      <line num="23" count="1" type="stmt"/>
+      <line num="24" count="1" type="stmt"/>
+      <line num="26" count="1" type="stmt"/>
+      <line num="36" count="1" type="stmt"/>
+      <line num="38" count="1" type="stmt"/>
+      <line num="48" count="1" type="stmt"/>
+      <line num="50" count="1" type="stmt"/>
+      <line num="52" count="1" type="stmt"/>
+      <line num="54" count="1" type="stmt"/>
+      <line num="58" count="0" type="stmt"/>
+      <line num="60" count="0" type="cond" truecount="0" falsecount="2"/>
+      <line num="61" count="0" type="stmt"/>
+      <line num="64" count="0" type="stmt"/>
+      <line num="65" count="0" type="cond" truecount="0" falsecount="2"/>
+      <line num="66" count="0" type="stmt"/>
+      <line num="69" count="0" type="stmt"/>
+      <line num="71" count="0" type="stmt"/>
+      <line num="73" count="0" type="stmt"/>
+      <line num="77" count="0" type="stmt"/>
+      <line num="79" count="0" type="stmt"/>
+      <line num="83" count="0" type="cond" truecount="0" falsecount="2"/>
+      <line num="84" count="0" type="stmt"/>
+      <line num="87" count="0" type="stmt"/>
+      <line num="88" count="0" type="stmt"/>
+      <line num="89" count="0" type="stmt"/>
+      <line num="91" count="0" type="stmt"/>
+      <line num="99" count="0" type="stmt"/>
+      <line num="101" count="0" type="stmt"/>
+      <line num="105" count="2" type="stmt"/>
+      <line num="109" count="2" type="cond" truecount="2" falsecount="0"/>
+      <line num="110" count="1" type="stmt"/>
+      <line num="115" count="1" type="stmt"/>
+      <line num="116" count="1" type="stmt"/>
+      <line num="120" count="2" type="stmt"/>
+      <line num="121" count="2" type="stmt"/>
+    </file>
+  </project>
+</coverage>
