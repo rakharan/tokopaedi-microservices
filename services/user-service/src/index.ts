@@ -1,0 +1,58 @@
+import "reflect-metadata";
+import fastify from 'fastify';
+import { connectDatabase, AppDataSource } from './infrastructure/mysql';
+import { EventPublisher } from './infrastructure/EventPublisher';
+import { UserService } from './services/UserService';
+import { AuthController } from './controllers/AuthController';
+import { User } from './models/User';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const app = fastify({ logger: true });
+
+async function bootstrap() {
+    try {
+        // 1. Connect to Database
+        await connectDatabase();
+
+        // 2. Connect to RabbitMQ (New Granular Config)
+        const eventPublisher = new EventPublisher();
+        await eventPublisher.connect({
+            host: process.env.RABBITMQ_HOST || 'localhost',
+            port: parseInt(process.env.RABBITMQ_PORT || '5672'),
+            username: process.env.RABBITMQ_USER || '',
+            password: process.env.RABBITMQ_PASS || '',
+            vhost: process.env.RABBITMQ_VHOST || '/'
+        });
+
+        // 3. Initialize Services
+        const userRepository = AppDataSource.getRepository(User);
+
+        const userService = new UserService(
+            userRepository,
+            eventPublisher,
+            process.env.JWT_SECRET || 'secret'
+        );
+        const authController = new AuthController(userService);
+
+        // 4. Register Routes
+        await app.register(async (api) => {
+            api.post('/auth/register', authController.register.bind(authController));
+            api.post('/auth/login', authController.login.bind(authController));
+            api.get('/auth/verify/:token', authController.verifyEmail.bind(authController));
+        }, { prefix: '/v1' });
+
+        app.get('/health', async () => ({ status: 'ok', service: 'user-service' }));
+
+        // 5. Start Server
+        const PORT = parseInt(process.env.PORT || '3001');
+        await app.listen({ port: PORT, host: '0.0.0.0' });
+        console.log(`User Service running on port ${PORT}`);
+    } catch (error) {
+        console.error('Failed to start service:', error);
+        process.exit(1);
+    }
+}
+
+bootstrap();
