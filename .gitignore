@@ -1,3 +1,8 @@
-node_modules
+node_modules/
 .env
-dist
+dist/
+
+# Testing
+coverage/
+.nyc_output/
+junit.xml
