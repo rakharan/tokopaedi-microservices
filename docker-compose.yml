@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # ============================================
   # Infrastructure Services
@@ -13,8 +11,8 @@ services:
       - "5672:5672"   # AMQP
       - "15672:15672" # Management UI
     environment:
-      RABBITMQ_DEFAULT_USER: admin
-      RABBITMQ_DEFAULT_PASS: admin123
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     networks:
@@ -51,15 +49,12 @@ services:
     image: mysql:8.0
     container_name: tokopaedi-user-db
     environment:
-      MYSQL_ROOT_PASSWORD: root123
-      MYSQL_DATABASE: user_db
-      MYSQL_USER: user_service
-      MYSQL_PASSWORD: user_pass
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+      MYSQL_DATABASE: tokopaedi_user
     ports:
       - "3307:3306"
     volumes:
       - user_db_data:/var/lib/mysql
-      - ./infrastructure/mysql/user-init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - tokopaedi-network
     healthcheck:
@@ -73,15 +68,12 @@ services:
     image: mysql:8.0
     container_name: tokopaedi-product-db
     environment:
-      MYSQL_ROOT_PASSWORD: root123
-      MYSQL_DATABASE: product_db
-      MYSQL_USER: product_service
-      MYSQL_PASSWORD: product_pass
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+      MYSQL_DATABASE: tokopaedi_product
     ports:
       - "3308:3306"
     volumes:
       - product_db_data:/var/lib/mysql
-      - ./infrastructure/mysql/product-init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - tokopaedi-network
     healthcheck:
@@ -95,15 +87,12 @@ services:
     image: mysql:8.0
     container_name: tokopaedi-order-db
     environment:
-      MYSQL_ROOT_PASSWORD: root123
-      MYSQL_DATABASE: order_db
-      MYSQL_USER: order_service
-      MYSQL_PASSWORD: order_pass
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+      MYSQL_DATABASE: tokopaedi_order
     ports:
       - "3309:3306"
     volumes:
       - order_db_data:/var/lib/mysql
-      - ./infrastructure/mysql/order-init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - tokopaedi-network
     healthcheck:
@@ -117,15 +106,12 @@ services:
     image: mysql:8.0
     container_name: tokopaedi-payment-db
     environment:
-      MYSQL_ROOT_PASSWORD: root123
-      MYSQL_DATABASE: payment_db
-      MYSQL_USER: payment_service
-      MYSQL_PASSWORD: payment_pass
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+      MYSQL_DATABASE: tokopaedi_payment
     ports:
       - "3310:3306"
     volumes:
       - payment_db_data:/var/lib/mysql
-      - ./infrastructure/mysql/payment-init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - tokopaedi-network
     healthcheck:
@@ -135,41 +121,35 @@ services:
       retries: 5
 
   # Delivery Service Database
-  delivery-db:
-    image: mysql:8.0
-    container_name: tokopaedi-delivery-db
-    environment:
-      MYSQL_ROOT_PASSWORD: root123
-      MYSQL_DATABASE: delivery_db
-      MYSQL_USER: delivery_service
-      MYSQL_PASSWORD: delivery_pass
-    ports:
-      - "3311:3306"
-    volumes:
-      - delivery_db_data:/var/lib/mysql
-      - ./infrastructure/mysql/delivery-init.sql:/docker-entrypoint-initdb.d/init.sql
-    networks:
-      - tokopaedi-network
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+  # delivery-db:
+  #   image: mysql:8.0
+  #   container_name: tokopaedi-delivery-db
+  #   environment:
+  #     MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+  #     MYSQL_DATABASE: tokopaedi_delivery
+  #   ports:
+  #     - "3311:3306"
+  #   volumes:
+  #     - delivery_db_data:/var/lib/mysql
+  #   networks:
+  #     - tokopaedi-network
+  #   healthcheck:
+  #     test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
 
   # Notification Service Database
   notification-db:
     image: mysql:8.0
     container_name: tokopaedi-notification-db
     environment:
-      MYSQL_ROOT_PASSWORD: root123
-      MYSQL_DATABASE: notification_db
-      MYSQL_USER: notification_service
-      MYSQL_PASSWORD: notification_pass
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+      MYSQL_DATABASE: tokopaedi_notification
     ports:
       - "3312:3306"
     volumes:
       - notification_db_data:/var/lib/mysql
-      - ./infrastructure/mysql/notification-init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - tokopaedi-network
     healthcheck:
@@ -185,8 +165,8 @@ services:
   # API Gateway
   api-gateway:
     build:
-      context: ./api-gateway
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: services/api-gateway/Dockerfile
     container_name: tokopaedi-gateway
     ports:
       - "3000:3000"
@@ -197,7 +177,7 @@ services:
       PRODUCT_SERVICE_URL: http://product-service:3002
       ORDER_SERVICE_URL: http://order-service:3003
       PAYMENT_SERVICE_URL: http://payment-service:3004
-      DELIVERY_SERVICE_URL: http://delivery-service:3005
+      # DELIVERY_SERVICE_URL: http://delivery-service:3005
       NOTIFICATION_SERVICE_URL: http://notification-service:3006
       REDIS_URL: redis://redis:6379
     depends_on:
@@ -208,15 +188,16 @@ services:
     networks:
       - tokopaedi-network
     volumes:
-      - ./api-gateway:/app
-      - /app/node_modules
+      - ./services/api-gateway:/app/services/api-gateway
+      - /app/services/api-gateway/node_modules
+      - ./shared:/app/shared
     command: npm run dev
 
   # User Service
   user-service:
     build:
-      context: ./services/user-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: services/user-service/Dockerfile
     container_name: tokopaedi-user-service
     ports:
       - "3001:3001"
@@ -225,10 +206,10 @@ services:
       PORT: 3001
       DB_HOST: user-db
       DB_PORT: 3306
-      DB_NAME: user_db
-      DB_USER: user_service
-      DB_PASSWORD: user_pass
-      RABBITMQ_URL: amqp://admin:admin123@rabbitmq:5672
+      DB_NAME: tokopaedi_user
+      DB_USER: root
+      DB_PASSWORD: ${DB_USER_PASS}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672
       REDIS_URL: redis://redis:6379
       JWT_SECRET: your-secret-key-change-in-production
     depends_on:
@@ -241,15 +222,16 @@ services:
     networks:
       - tokopaedi-network
     volumes:
-      - ./services/user-service:/app
-      - /app/node_modules
+      - ./services/user-service:/app/services/user-service
+      - /app/services/user-service/node_modules
+      - ./shared:/app/shared
     command: npm run dev
 
   # Product Service
   product-service:
     build:
-      context: ./services/product-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile:  services/product-service/Dockerfile
     container_name: tokopaedi-product-service
     ports:
       - "3002:3002"
@@ -258,10 +240,10 @@ services:
       PORT: 3002
       DB_HOST: product-db
       DB_PORT: 3306
-      DB_NAME: product_db
-      DB_USER: product_service
-      DB_PASSWORD: product_pass
-      RABBITMQ_URL: amqp://admin:admin123@rabbitmq:5672
+      DB_NAME: tokopaedi_product
+      DB_USER: root
+      DB_PASSWORD: ${DB_PRODUCT_PASS}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672
       REDIS_URL: redis://redis:6379
     depends_on:
       product-db:
@@ -273,15 +255,16 @@ services:
     networks:
       - tokopaedi-network
     volumes:
-      - ./services/product-service:/app
-      - /app/node_modules
+      - ./services/product-service:/app/services/product-service
+      - /app/services/product-service/node_modules
+      - ./shared:/app/shared
     command: npm run dev
 
   # Order Service
   order-service:
     build:
-      context: ./services/order-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: services/order-service/Dockerfile
     container_name: tokopaedi-order-service
     ports:
       - "3003:3003"
@@ -290,10 +273,10 @@ services:
       PORT: 3003
       DB_HOST: order-db
       DB_PORT: 3306
-      DB_NAME: order_db
-      DB_USER: order_service
-      DB_PASSWORD: order_pass
-      RABBITMQ_URL: amqp://admin:admin123@rabbitmq:5672
+      DB_NAME: tokopaedi_order
+      DB_USER: root
+      DB_PASSWORD: ${DB_ORDER_PASS}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672
       REDIS_URL: redis://redis:6379
     depends_on:
       order-db:
@@ -305,15 +288,16 @@ services:
     networks:
       - tokopaedi-network
     volumes:
-      - ./services/order-service:/app
-      - /app/node_modules
+      - ./services/order-service:/app/services/order-service
+      - /app/services/order-service/node_modules
+      - ./shared:/app/shared
     command: npm run dev
 
   # Payment Service
   payment-service:
     build:
-      context: ./services/payment-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: services/payment-service/Dockerfile
     container_name: tokopaedi-payment-service
     ports:
       - "3004:3004"
@@ -322,10 +306,10 @@ services:
       PORT: 3004
       DB_HOST: payment-db
       DB_PORT: 3306
-      DB_NAME: payment_db
-      DB_USER: payment_service
-      DB_PASSWORD: payment_pass
-      RABBITMQ_URL: amqp://admin:admin123@rabbitmq:5672
+      DB_NAME: tokopaedi_payment
+      DB_USER: root
+      DB_PASSWORD: ${DB_PAYMENT_PASS}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672
       REDIS_URL: redis://redis:6379
       # Payment Gateway Credentials (use test/sandbox)
       MIDTRANS_SERVER_KEY: your-midtrans-sandbox-key
@@ -340,47 +324,48 @@ services:
     networks:
       - tokopaedi-network
     volumes:
-      - ./services/payment-service:/app
-      - /app/node_modules
+      - ./services/payment-service:/app/services/payment-service
+      - /app/services/payment-service/node_modules
+      - ./shared:/app/shared
     command: npm run dev
 
   # Delivery Service
-  delivery-service:
-    build:
-      context: ./services/delivery-service
-      dockerfile: Dockerfile
-    container_name: tokopaedi-delivery-service
-    ports:
-      - "3005:3005"
-    environment:
-      NODE_ENV: development
-      PORT: 3005
-      DB_HOST: delivery-db
-      DB_PORT: 3306
-      DB_NAME: delivery_db
-      DB_USER: delivery_service
-      DB_PASSWORD: delivery_pass
-      RABBITMQ_URL: amqp://admin:admin123@rabbitmq:5672
-      REDIS_URL: redis://redis:6379
-    depends_on:
-      delivery-db:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - tokopaedi-network
-    volumes:
-      - ./services/delivery-service:/app
-      - /app/node_modules
-    command: npm run dev
+  # delivery-service:
+  #   build:
+  #     context: .
+  #     dockerfile: services/delivery-service/Dockerfile
+  #   container_name: tokopaedi-delivery-service
+  #   ports:
+  #     - "3005:3005"
+  #   environment:
+  #     NODE_ENV: development
+  #     PORT: 3005
+  #     DB_HOST: delivery-db
+  #     DB_PORT: 3306
+  #     DB_NAME: tokopaedi_delivery
+  #     DB_USER: root
+  #     DB_PASSWORD: ${DB_DELIVERY_PASS}
+  #     RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672
+  #     REDIS_URL: redis://redis:6379
+  #   depends_on:
+  #     delivery-db:
+  #       condition: service_healthy
+  #     rabbitmq:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   networks:
+  #     - tokopaedi-network
+  #   volumes:
+  #     - ./services/delivery-service:/app
+  #     - /app/node_modules
+  #   command: npm run dev
 
   # Notification Service
   notification-service:
     build:
-      context: ./services/notification-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: services/notification-service/Dockerfile
     container_name: tokopaedi-notification-service
     ports:
       - "3006:3006"
@@ -389,10 +374,10 @@ services:
       PORT: 3006
       DB_HOST: notification-db
       DB_PORT: 3306
-      DB_NAME: notification_db
-      DB_USER: notification_service
-      DB_PASSWORD: notification_pass
-      RABBITMQ_URL: amqp://admin:admin123@rabbitmq:5672
+      DB_NAME: tokopaedi_notification
+      DB_USER: root
+      DB_PASSWORD: ${DB_NOTIFICATION_PASS}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672
       REDIS_URL: redis://redis:6379
       # Email Configuration
       SMTP_HOST: smtp.gmail.com
@@ -409,8 +394,9 @@ services:
     networks:
       - tokopaedi-network
     volumes:
-      - ./services/notification-service:/app
-      - /app/node_modules
+      - ./services/notification-service:/app/services/notification-service
+      - /app/services/notification-service/node_modules
+      - ./shared:/app/shared
     command: npm run dev
 
   # ============================================
@@ -471,7 +457,7 @@ volumes:
   product_db_data:
   order_db_data:
   payment_db_data:
-  delivery_db_data:
+  # delivery_db_data:
   notification_db_data:
   prometheus_data:
   grafana_data:
