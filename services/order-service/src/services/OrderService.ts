@@ -3,7 +3,7 @@ import { Order, OrderStatus } from '../models/Order';
 import { OrderItem } from '../models/OrderItem';
 import { EventPublisher } from '../infrastructure/EventPublisher';
 import { ProductClient } from '../infrastructure/ProductClient';
-import { OrderCreatedEvent } from '@tokopaedi/shared';
+import { OrderCancelledEvent, OrderCreatedEvent } from '@tokopaedi/shared';
 
 export class OrderService {
     constructor(
@@ -87,5 +87,60 @@ export class OrderService {
         await this.eventPublisher.publish(event);
 
         return order;
+    }
+
+    async updateOrderStatus(orderId: number, status: OrderStatus): Promise<void> {
+        const order = await this.orderRepository.findOneBy({ id: orderId });
+
+        if (!order) {
+            console.error(`Order ${orderId} not found`);
+            return;
+        }
+
+        if (order.status === status) {
+            return;
+        }
+
+        order.status = status;
+        await this.orderRepository.save(order);
+        console.log(`Order ${orderId} status updated to ${status}`);
+    }
+
+    async cancelOrder(orderId: number, reason: string): Promise<void> {
+        const order = await this.orderRepository.findOne({
+            where: { id: orderId },
+            relations: ['items'] // We need items to refund stock later
+        });
+
+        if (!order) {
+            console.error(`Order ${orderId} not found for cancellation`);
+            return;
+        }
+
+        if (order.status === OrderStatus.CANCELLED) {
+            return;
+        }
+
+        order.status = OrderStatus.CANCELLED;
+        await this.orderRepository.save(order);
+        console.log(`Order ${orderId} cancelled. Reason: ${reason}`);
+
+        // Emit Event for Product Service to pick up
+        const event: OrderCancelledEvent = {
+            eventType: 'order.cancelled',
+            timestamp: Date.now(),
+            data: {
+                orderId: order.id,
+                userId: order.userId,
+                items: order.items.map(i => ({
+                    productId: i.productId,
+                    quantity: i.quantity,
+                    price: Number(i.price)
+                })),
+                reason: reason
+            }
+        };
+
+        await this.eventPublisher.publish(event);
     }
 }

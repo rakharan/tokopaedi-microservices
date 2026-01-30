@@ -102,4 +102,21 @@ export class ProductService {
         return product;
     }
 
+    async increaseStock(productId: number, quantity: number): Promise<void> {
+        const product = await this.productRepository.findOneBy({ id: productId });
+
+        if (!product) {
+            console.error(`Product ${productId} not found for stock restoration.`);
+            return;
+        }
+
+        product.stock += quantity;
+        await this.productRepository.save(product);
+
+        console.log(`↺ Restored stock for Product ${productId}. (+${quantity}). New Stock: ${product.stock}`);
+
+        // Ideally, we should publish a product.updated event here too, 
+        // but for the saga pattern, just saving is enough for now.
+    }
+
 }

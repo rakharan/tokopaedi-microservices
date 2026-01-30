@@ -361,6 +361,7 @@ export type DomainEvent =
   // Order Events
   | OrderCreatedEvent
   | OrderCancelledEvent
+  | OrderPaidEvent
   | OrderPaymentPendingEvent
   | OrderPaymentCompletedEvent
   | OrderCompletedEvent
@@ -467,3 +468,14 @@ export const QueueNames = {
   NOTIFICATION_SERVICE: 'notification.service.queue',
   NOTIFICATION_ALL_EVENTS: 'notification.all.events.queue',
 } as const;
+
+export interface OrderPaidEvent {
+  eventType: 'order.paid';
+  timestamp: number;
+  data: {
+    orderId: number;
+    paymentId: number;
+    amount: number;
+    paidAt: Date;
+  };
+}

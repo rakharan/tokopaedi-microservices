@@ -6,8 +6,9 @@ import { UserService } from './services/UserService';
 import { AuthController } from './controllers/AuthController';
 import { User } from './models/User';
 import dotenv from 'dotenv';
+import path from "path";
 
-dotenv.config();
+dotenv.config({ path: path.resolve(__dirname, `../.env`) });
 
 const app = fastify({ logger: true });
 

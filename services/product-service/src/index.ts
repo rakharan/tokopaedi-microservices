@@ -7,6 +7,8 @@ import { ProductService } from './services/ProductService';
 import { ProductController } from './controllers/ProductController';
 import { Product } from './models/Product';
 import { ProductGrpcServer } from "./controllers/ProductGrpcController";
+import { RabbitMQConsumer } from "./infrastructure/RabbitMQConsumer";
+import { ExchangeNames } from "@tokopaedi/shared";
 
 dotenv.config();
 
@@ -26,6 +28,25 @@ async function bootstrap() {
             password: process.env.RABBITMQ_PASS || 'guest',
             vhost: process.env.RABBITMQ_VHOST || '/'
         });
+
+        const consumer = new RabbitMQConsumer();
+        await consumer.connect();
+
+        await consumer.subscribe(
+            ExchangeNames.ORDER_EVENTS,   // Exchange
+            'order.cancelled',            // Routing Key
+            'product_stock_restoration',  // Queue Name
+            async (data) => {
+                console.log(`Received cancellation for Order ${data.orderId}. Restoring stock...`);
+
+                // Loop through items and restore each one
+                if (data.items && Array.isArray(data.items)) {
+                    for (const item of data.items) {
+                        await productService.increaseStock(item.productId, item.quantity);
+                    }
+                }
+            }
+        );
 
         // 3. Initialize Services (Dependency Injection)
         const productRepository = AppDataSource.getRepository(Product);

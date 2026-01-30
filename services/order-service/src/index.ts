@@ -6,8 +6,10 @@ import { EventPublisher } from './infrastructure/EventPublisher';
 import { ProductClient } from './infrastructure/ProductClient';
 import { OrderService } from './services/OrderService';
 import { OrderController } from './controllers/OrderController';
-import { Order } from './models/Order';
+import { Order, OrderStatus } from './models/Order';
 import path from "path";
+import { ExchangeNames } from "@tokopaedi/shared";
+import { RabbitMQConsumer } from "./infrastructure/RabbitMQConsumer";
 
 dotenv.config({ path: path.resolve(__dirname, `./.env`) });
 
@@ -36,6 +38,28 @@ async function bootstrap() {
         // 3. Service Layer: Dependency Injection
         const orderRepository = AppDataSource.getRepository(Order);
         const orderService = new OrderService(orderRepository, eventPublisher, productClient);
+
+        const consumer = new RabbitMQConsumer();
+        await consumer.connect();
+        await consumer.subscribe(
+            ExchangeNames.ORDER_EVENTS,  // Exchange
+            'order.paid',                // Routing Key
+            'order_updates_queue',       // Queue Name
+            async (data) => {
+                console.log(`Received payment confirmation for Order ${data.orderId}`);
+                await orderService.updateOrderStatus(data.orderId, OrderStatus.PAID);
+            }
+        );
+
+        await consumer.subscribe(
+            ExchangeNames.PAYMENT_EVENTS,
+            'payment.failed',
+            'order_payment_failures',
+            async (data) => {
+                console.log(`Payment failed for Order ${data.orderId}. Cancelling...`);
+                await orderService.cancelOrder(data.orderId, data.reason);
+            }
+        );
 
         // 4. Controller Layer
         const orderController = new OrderController(orderService);
