@@ -6,6 +6,7 @@ import { EventPublisher } from './infrastructure/EventPublisher';
 import { ProductService } from './services/ProductService';
 import { ProductController } from './controllers/ProductController';
 import { Product } from './models/Product';
+import { ProductGrpcServer } from "./controllers/ProductGrpcController";
 
 dotenv.config();
 
@@ -45,6 +46,9 @@ async function bootstrap() {
         const PORT = parseInt(process.env.PORT || '3002'); // Note: Port 3002
         await app.listen({ port: PORT, host: '0.0.0.0' });
         console.log(`Product Service running on port ${PORT}`);
+
+        const grpcServer = new ProductGrpcServer(productService);
+        grpcServer.start(process.env.GRPC_PORT || '50051');
 
     } catch (error) {
         console.error('Failed to start service:', error);
