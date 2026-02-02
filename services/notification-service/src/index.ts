@@ -2,7 +2,7 @@ import fastify from 'fastify';
 import dotenv from 'dotenv';
 import { RabbitMQConsumer } from './infrastructure/RabbitMQConsumer';
 import { EmailService } from './services/EmailService';
-import { ExchangeNames } from '@tokopaedi/shared';
+import { EventRoutingKeys, ExchangeNames, QueueNames } from '@tokopaedi/shared';
 import path from 'path';
 
 dotenv.config({ path: path.resolve(__dirname, `../.env`) });
@@ -20,8 +20,8 @@ async function bootstrap() {
         // Queue Name: "notification_order_created" ensures we have our own persistent inbox
         await consumer.subscribe(
             ExchangeNames.ORDER_EVENTS,  // Exchange
-            'order.created',             // Routing Key
-            'notification_order_created',// Queue Name
+            EventRoutingKeys.ORDER_CREATED,             // Routing Key
+            QueueNames.NOTIFICATION_SERVICE,// Queue Name
             async (data) => {
                 await emailService.sendOrderConfirmation(data);
             }

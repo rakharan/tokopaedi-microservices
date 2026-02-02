@@ -6,7 +6,7 @@ import { RabbitMQConsumer } from './infrastructure/RabbitMQConsumer';
 import { EventPublisher } from './infrastructure/EventPublisher';
 import { PaymentService } from './services/PaymentService';
 import { Payment } from './models/Payment';
-import { ExchangeNames } from '@tokopaedi/shared';
+import { EventRoutingKeys, ExchangeNames } from '@tokopaedi/shared';
 import path from "path";
 
 dotenv.config({ path: path.resolve(__dirname, `../.env`) });
@@ -39,7 +39,7 @@ async function bootstrap() {
     // 4. Subscribe
     await consumer.subscribe(
       ExchangeNames.ORDER_EVENTS,
-      'order.created',
+      EventRoutingKeys.ORDER_CREATED,
       'payment_order_created', // Unique queue name for Payment Service
       async (data) => {
         await paymentService.processPayment(data);

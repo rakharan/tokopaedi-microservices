@@ -1,7 +1,7 @@
 import { Repository } from 'typeorm';
 import { Product } from '../models/Product';
 import { EventPublisher } from '../infrastructure/EventPublisher';
-import { ProductCreatedEvent, ProductUpdatedEvent } from '@tokopaedi/shared';
+import { EventRoutingKeys, ProductCreatedEvent, ProductUpdatedEvent } from '@tokopaedi/shared';
 
 export class ProductService {
     constructor(
@@ -19,7 +19,7 @@ export class ProductService {
 
         // Publish event for Search Service or Analytics
         const event: ProductCreatedEvent = {
-            eventType: 'product.created',
+            eventType: EventRoutingKeys.PRODUCT_CREATED,
             timestamp: Date.now(),
             data: {
                 productId: product.id,
@@ -87,7 +87,7 @@ export class ProductService {
 
         // Publish event
         const event: ProductUpdatedEvent = {
-            eventType: 'product.updated',
+            eventType: EventRoutingKeys.PRODUCT_UPDATED,
             timestamp: Date.now(),
             data: {
                 productId: product.id,

@@ -1,7 +1,7 @@
 import { Repository } from 'typeorm';
 import { Payment, PaymentStatus } from '../models/Payment';
 import { EventPublisher } from '../infrastructure/EventPublisher';
-import { OrderPaidEvent, PaymentFailedEvent } from '@tokopaedi/shared';
+import { EventRoutingKeys, OrderPaidEvent, PaymentFailedEvent } from '@tokopaedi/shared';
 
 export class PaymentService {
     constructor(
@@ -27,7 +27,7 @@ export class PaymentService {
             await this.paymentRepository.save(failedPayment);
 
             const event: PaymentFailedEvent = {
-                eventType: 'payment.failed',
+                eventType: EventRoutingKeys.PAYMENT_FAILED,
                 timestamp: Date.now(),
                 data: {
                     paymentId: failedPayment.id,
@@ -52,7 +52,7 @@ export class PaymentService {
         console.log(`Payment successful. Txn: ${payment.transactionId}`);
 
         const event: OrderPaidEvent = {
-            eventType: 'order.paid',
+            eventType: EventRoutingKeys.ORDER_PAID,
             timestamp: Date.now(),
             data: {
                 orderId: payment.orderId,

@@ -8,7 +8,7 @@ import { OrderService } from './services/OrderService';
 import { OrderController } from './controllers/OrderController';
 import { Order, OrderStatus } from './models/Order';
 import path from "path";
-import { ExchangeNames } from "@tokopaedi/shared";
+import { EventRoutingKeys, ExchangeNames } from "@tokopaedi/shared";
 import { RabbitMQConsumer } from "./infrastructure/RabbitMQConsumer";
 
 dotenv.config({ path: path.resolve(__dirname, `./.env`) });
@@ -43,7 +43,7 @@ async function bootstrap() {
         await consumer.connect();
         await consumer.subscribe(
             ExchangeNames.ORDER_EVENTS,  // Exchange
-            'order.paid',                // Routing Key
+            EventRoutingKeys.ORDER_PAID,                // Routing Key
             'order_updates_queue',       // Queue Name
             async (data) => {
                 console.log(`Received payment confirmation for Order ${data.orderId}`);
@@ -53,7 +53,7 @@ async function bootstrap() {
 
         await consumer.subscribe(
             ExchangeNames.PAYMENT_EVENTS,
-            'payment.failed',
+            EventRoutingKeys.PAYMENT_FAILED,
             'order_payment_failures',
             async (data) => {
                 console.log(`Payment failed for Order ${data.orderId}. Cancelling...`);

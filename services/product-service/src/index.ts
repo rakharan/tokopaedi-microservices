@@ -8,7 +8,7 @@ import { ProductController } from './controllers/ProductController';
 import { Product } from './models/Product';
 import { ProductGrpcServer } from "./controllers/ProductGrpcController";
 import { RabbitMQConsumer } from "./infrastructure/RabbitMQConsumer";
-import { ExchangeNames } from "@tokopaedi/shared";
+import { EventRoutingKeys, ExchangeNames } from "@tokopaedi/shared";
 
 dotenv.config();
 
@@ -34,7 +34,7 @@ async function bootstrap() {
 
         await consumer.subscribe(
             ExchangeNames.ORDER_EVENTS,   // Exchange
-            'order.cancelled',            // Routing Key
+            EventRoutingKeys.ORDER_CANCELLED,            // Routing Key
             'product_stock_restoration',  // Queue Name
             async (data) => {
                 console.log(`Received cancellation for Order ${data.orderId}. Restoring stock...`);

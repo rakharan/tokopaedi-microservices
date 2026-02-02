@@ -405,6 +405,7 @@ export const EventRoutingKeys = {
   ORDER_CANCELLED: 'order.cancelled',
   ORDER_PAYMENT_PENDING: 'order.payment.pending',
   ORDER_PAYMENT_COMPLETED: 'order.payment.completed',
+  ORDER_PAID: 'order.paid',
   ORDER_COMPLETED: 'order.completed',
   ORDER_FAILED: 'order.failed',
 
