@@ -121,23 +121,23 @@ services:
       retries: 5
 
   # Delivery Service Database
-  # delivery-db:
-  #   image: mysql:8.0
-  #   container_name: tokopaedi-delivery-db
-  #   environment:
-  #     MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
-  #     MYSQL_DATABASE: tokopaedi_delivery
-  #   ports:
-  #     - "3311:3306"
-  #   volumes:
-  #     - delivery_db_data:/var/lib/mysql
-  #   networks:
-  #     - tokopaedi-network
-  #   healthcheck:
-  #     test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 5
+  delivery-db:
+    image: mysql:8.0
+    container_name: tokopaedi-delivery-db
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+      MYSQL_DATABASE: tokopaedi_delivery
+    ports:
+      - "3311:3306"
+    volumes:
+      - delivery_db_data:/var/lib/mysql
+    networks:
+      - tokopaedi-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # Notification Service Database
   notification-db:
@@ -177,7 +177,7 @@ services:
       PRODUCT_SERVICE_URL: http://product-service:3002
       ORDER_SERVICE_URL: http://order-service:3003
       PAYMENT_SERVICE_URL: http://payment-service:3004
-      # DELIVERY_SERVICE_URL: http://delivery-service:3005
+      DELIVERY_SERVICE_URL: http://delivery-service:3005
       NOTIFICATION_SERVICE_URL: http://notification-service:3006
       REDIS_URL: redis://redis:6379
     depends_on:
@@ -330,36 +330,37 @@ services:
     command: npm run dev
 
   # Delivery Service
-  # delivery-service:
-  #   build:
-  #     context: .
-  #     dockerfile: services/delivery-service/Dockerfile
-  #   container_name: tokopaedi-delivery-service
-  #   ports:
-  #     - "3005:3005"
-  #   environment:
-  #     NODE_ENV: development
-  #     PORT: 3005
-  #     DB_HOST: delivery-db
-  #     DB_PORT: 3306
-  #     DB_NAME: tokopaedi_delivery
-  #     DB_USER: root
-  #     DB_PASSWORD: ${DB_DELIVERY_PASS}
-  #     RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672
-  #     REDIS_URL: redis://redis:6379
-  #   depends_on:
-  #     delivery-db:
-  #       condition: service_healthy
-  #     rabbitmq:
-  #       condition: service_healthy
-  #     redis:
-  #       condition: service_healthy
-  #   networks:
-  #     - tokopaedi-network
-  #   volumes:
-  #     - ./services/delivery-service:/app
-  #     - /app/node_modules
-  #   command: npm run dev
+  delivery-service:
+    build:
+      context: .
+      dockerfile: services/delivery-service/Dockerfile
+    container_name: tokopaedi-delivery-service
+    ports:
+      - "3005:3005"
+    environment:
+      NODE_ENV: development
+      PORT: 3005
+      DB_HOST: delivery-db
+      DB_PORT: 3306
+      DB_NAME: tokopaedi_delivery
+      DB_USER: root
+      DB_PASSWORD: ${DB_DELIVERY_PASS}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      delivery-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - tokopaedi-network
+    volumes:
+      - ./services/delivery-service:/app/services/delivery-service
+      - /app/services/delivery-service/node_modules
+      - ./shared:/app/shared
+    command: npm run dev
 
   # Notification Service
   notification-service:
@@ -457,7 +458,7 @@ volumes:
   product_db_data:
   order_db_data:
   payment_db_data:
-  # delivery_db_data:
+  delivery_db_data:
   notification_db_data:
   prometheus_data:
   grafana_data:
