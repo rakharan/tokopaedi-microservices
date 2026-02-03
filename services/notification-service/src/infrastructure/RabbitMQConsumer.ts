@@ -13,16 +13,14 @@ export class RabbitMQConsumer {
         const vhost = process.env.RABBITMQ_VHOST || '';
 
         // 2. Construct the full AMQP Connection String
-        // Format: amqp://user:pass@host:port/vhost
-        // We encodeURIComponent to handle special characters in passwords
         const connectionUrl = `amqp://${encodeURIComponent(user)}:${encodeURIComponent(pass)}@${host}:${port}/${encodeURIComponent(vhost)}`;
 
         try {
             this.connection = await amqp.connect(connectionUrl);
             this.channel = await this.connection.createChannel();
-            console.log('✅ Notification Service connected to RabbitMQ');
+            console.log('[RabbitMQ] Connected successfully');
         } catch (error) {
-            console.error('❌ RabbitMQ Connection Failed:', error);
+            console.error('[RabbitMQ] Connection Failed:', error);
             throw error;
         }
     }
@@ -35,32 +33,38 @@ export class RabbitMQConsumer {
     ): Promise<void> {
         if (!this.channel) await this.connect();
 
-        // 1. Assert Exchange
-        await this.channel.assertExchange(exchange, 'topic', { durable: true });
+        try {
+            // 1. Assert Exchange
+            await this.channel.assertExchange(exchange, 'topic', { durable: true });
 
-        // 2. Assert Queue
-        await this.channel.assertQueue(queueName, { durable: true });
+            // 2. Assert Queue
+            await this.channel.assertQueue(queueName, { durable: true });
 
-        // 3. Bind
-        await this.channel.bindQueue(queueName, exchange, routingKey);
+            // 3. Bind
+            await this.channel.bindQueue(queueName, exchange, routingKey);
 
-        console.log(`🎧 Listening on queue: ${queueName}`);
+            console.log(`[RabbitMQ] Listening on queue: ${queueName} (Key: ${routingKey})`);
 
-        // 4. Consume
-        this.channel.consume(queueName, async (msg: any) => {
-            if (msg !== null) {
-                try {
-                    const content = JSON.parse(msg.content.toString());
-                    console.log(`📩 Received event: ${content.eventType}`);
+            // 4. Consume
+            this.channel.consume(queueName, async (msg: any) => {
+                if (msg !== null) {
+                    try {
+                        const content = JSON.parse(msg.content.toString());
+                        console.log(`[Event] Received: ${content.eventType || routingKey}`);
 
-                    await handler(content.data);
+                        // Handle both enveloped data (content.data) and direct payloads
+                        const payload = content.data || content;
+                        await handler(payload);
 
-                    this.channel.ack(msg);
-                } catch (error) {
-                    console.error('Processing failed:', error);
-                    // this.channel.nack(msg); // Uncomment to retry logic
+                        this.channel.ack(msg);
+                    } catch (error) {
+                        console.error('[Error] Processing failed:', error);
+                        // this.channel.nack(msg);
+                    }
                 }
-            }
-        });
+            });
+        } catch (error) {
+            console.error('[RabbitMQ] Subscribe Error:', error);
+        }
     }
 }

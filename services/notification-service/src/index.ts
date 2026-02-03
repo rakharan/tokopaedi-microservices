@@ -13,26 +13,45 @@ const emailService = new EmailService();
 
 async function bootstrap() {
     try {
-        // 1. Start RabbitMQ Consumer
         await consumer.connect();
 
-        // 2. Subscribe to "order.created"
-        // Queue Name: "notification_order_created" ensures we have our own persistent inbox
+        // 1. Order Created -> Send Confirmation
         await consumer.subscribe(
-            ExchangeNames.ORDER_EVENTS,  // Exchange
-            EventRoutingKeys.ORDER_CREATED,             // Routing Key
-            QueueNames.NOTIFICATION_SERVICE,// Queue Name
+            ExchangeNames.ORDER_EVENTS,
+            EventRoutingKeys.ORDER_CREATED,
+            `${QueueNames.NOTIFICATION_SERVICE}.created`,
             async (data) => {
                 await emailService.sendOrderConfirmation(data);
             }
         );
 
-        // 3. Start Health Check Server
+        // 2. Order Paid -> Send Payment Receipt
+        await consumer.subscribe(
+            ExchangeNames.ORDER_EVENTS,
+            EventRoutingKeys.ORDER_PAID,
+            `${QueueNames.NOTIFICATION_SERVICE}.paid`,
+            async (data) => {
+                await emailService.sendPaymentReceived(data);
+            }
+        );
+
+        // 3. Delivery Shipped -> Send Tracking Info
+        // Note: We listen to DELIVERY_EVENTS exchange here
+        await consumer.subscribe(
+            ExchangeNames.DELIVERY_EVENTS,
+            EventRoutingKeys.DELIVERY_SHIPPED,
+            `${QueueNames.NOTIFICATION_SERVICE}.shipped`,
+            async (data) => {
+                await emailService.sendShippingUpdate(data);
+            }
+        );
+
+        // Health Check
         app.get('/health', async () => ({ status: 'ok', service: 'notification-service' }));
 
-        const PORT = process.env.PORT || 3004;
+        const PORT = process.env.PORT || 3006; // Updated to match docker-compose (3006)
         await app.listen({ port: Number(PORT), host: '0.0.0.0' });
-        console.log(`🚀 Notification Service running on port ${PORT}`);
+        console.log(`Notification Service running on port ${PORT}`);
 
     } catch (error) {
         console.error(error);
