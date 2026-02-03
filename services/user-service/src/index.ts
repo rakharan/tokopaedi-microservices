@@ -42,7 +42,7 @@ async function bootstrap() {
             api.post('/auth/register', authController.register.bind(authController));
             api.post('/auth/login', authController.login.bind(authController));
             api.get('/auth/verify/:token', authController.verifyEmail.bind(authController));
-        }, { prefix: '/v1' });
+        }, { prefix: '/v1/users' });
 
         app.get('/health', async () => ({ status: 'ok', service: 'user-service' }));
 
