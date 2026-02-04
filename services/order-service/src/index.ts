@@ -2,14 +2,12 @@ import "reflect-metadata";
 import fastify from 'fastify';
 import dotenv from 'dotenv';
 import { connectDatabase, AppDataSource } from './infrastructure/mysql';
-import { EventPublisher } from './infrastructure/EventPublisher';
 import { ProductClient } from './infrastructure/ProductClient';
 import { OrderService } from './services/OrderService';
 import { OrderController } from './controllers/OrderController';
 import { Order, OrderStatus } from './models/Order';
 import path from "path";
-import { EventRoutingKeys, ExchangeNames } from "@tokopaedi/shared";
-import { RabbitMQConsumer } from "./infrastructure/RabbitMQConsumer";
+import { EventPublisher, EventRoutingKeys, ExchangeNames, RabbitMQConsumer } from "@tokopaedi/shared";
 
 dotenv.config({ path: path.resolve(__dirname, `./.env`) });
 
@@ -22,29 +20,25 @@ async function bootstrap() {
         await connectDatabase();
 
         const eventPublisher = new EventPublisher();
-        await eventPublisher.connect({
-            host: process.env.RABBITMQ_HOST || 'localhost',
-            port: parseInt(process.env.RABBITMQ_PORT || '5672'),
-            username: process.env.RABBITMQ_USER || '',
-            password: process.env.RABBITMQ_PASS || '',
-            vhost: process.env.RABBITMQ_VHOST || ''
-        });
 
         // 2. Client Layer: Connect to Product Service (gRPC)
         const grpcUrl = process.env.PRODUCT_GRPC_URL || 'localhost:50051';
         const productClient = new ProductClient(grpcUrl);
-        console.log(`🔌 Initialized gRPC Client pointing to ${grpcUrl}`);
+        console.log(`Initialized gRPC Client pointing to ${grpcUrl}`);
 
         // 3. Service Layer: Dependency Injection
         const orderRepository = AppDataSource.getRepository(Order);
         const orderService = new OrderService(orderRepository, eventPublisher, productClient);
 
         const consumer = new RabbitMQConsumer();
-        await consumer.connect();
+
         await consumer.subscribe(
-            ExchangeNames.ORDER_EVENTS,  // Exchange
-            EventRoutingKeys.ORDER_PAID,                // Routing Key
-            'order_updates_queue',       // Queue Name
+            {
+                exchange: ExchangeNames.ORDER_EVENTS,
+                exchangeType: "topic",
+                routingKey: EventRoutingKeys.ORDER_PAID,
+                queueName: "order_updates_queue",
+            },
             async (data) => {
                 console.log(`Received payment confirmation for Order ${data.orderId}`);
                 await orderService.updateOrderStatus(data.orderId, OrderStatus.PAID);
@@ -52,9 +46,12 @@ async function bootstrap() {
         );
 
         await consumer.subscribe(
-            ExchangeNames.PAYMENT_EVENTS,
-            EventRoutingKeys.PAYMENT_FAILED,
-            'order_payment_failures',
+            {
+                exchange: ExchangeNames.PAYMENT_EVENTS,
+                exchangeType: "topic",
+                routingKey: EventRoutingKeys.PAYMENT_FAILED,
+                queueName: "order_payment_failures",
+            },
             async (data) => {
                 console.log(`Payment failed for Order ${data.orderId}. Cancelling...`);
                 await orderService.cancelOrder(data.orderId, data.reason);
@@ -72,7 +69,7 @@ async function bootstrap() {
         // 6. Start Server
         const PORT = parseInt(process.env.PORT || '3003');
         await app.listen({ port: PORT, host: '0.0.0.0' });
-        console.log(`🚀 Order Service running on port ${PORT}`);
+        console.log(`Order Service running on port ${PORT}`);
 
     } catch (error) {
         console.error('Failed to start service:', error);

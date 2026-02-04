@@ -1,12 +1,12 @@
 import "reflect-metadata";
 import fastify from 'fastify';
 import { connectDatabase, AppDataSource } from './infrastructure/mysql';
-import { EventPublisher } from './infrastructure/EventPublisher';
 import { UserService } from './services/UserService';
 import { AuthController } from './controllers/AuthController';
 import { User } from './models/User';
 import dotenv from 'dotenv';
 import path from "path";
+import { EventPublisher } from "@tokopaedi/shared";
 
 dotenv.config({ path: path.resolve(__dirname, `../.env`) });
 
@@ -19,13 +19,6 @@ async function bootstrap() {
 
         // 2. Connect to RabbitMQ (New Granular Config)
         const eventPublisher = new EventPublisher();
-        await eventPublisher.connect({
-            host: process.env.RABBITMQ_HOST || 'localhost',
-            port: parseInt(process.env.RABBITMQ_PORT || '5672'),
-            username: process.env.RABBITMQ_USER || '',
-            password: process.env.RABBITMQ_PASS || '',
-            vhost: process.env.RABBITMQ_VHOST || '/'
-        });
 
         // 3. Initialize Services
         const userRepository = AppDataSource.getRepository(User);

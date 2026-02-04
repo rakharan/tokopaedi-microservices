@@ -1,35 +1,37 @@
 import fastify from 'fastify';
 import dotenv from 'dotenv';
-import { RabbitMQConsumer } from './infrastructure/RabbitMQConsumer';
 import { EmailService } from './services/EmailService';
-import { EventRoutingKeys, ExchangeNames, QueueNames } from '@tokopaedi/shared';
+import { EventRoutingKeys, ExchangeNames, QueueNames, RabbitMQConsumer } from '@tokopaedi/shared';
 import path from 'path';
 
 dotenv.config({ path: path.resolve(__dirname, `../.env`) });
 
 const app = fastify();
-const consumer = new RabbitMQConsumer();
 const emailService = new EmailService();
 
 async function bootstrap() {
     try {
-        await consumer.connect();
+        const consumer = new RabbitMQConsumer();
 
         // 1. Order Created -> Send Confirmation
-        await consumer.subscribe(
-            ExchangeNames.ORDER_EVENTS,
-            EventRoutingKeys.ORDER_CREATED,
-            `${QueueNames.NOTIFICATION_SERVICE}.created`,
+        await consumer.subscribe({
+            exchange: ExchangeNames.ORDER_EVENTS,
+            exchangeType: 'topic',
+            routingKey: EventRoutingKeys.ORDER_CREATED,
+            queueName: `${QueueNames.NOTIFICATION_SERVICE}.created`,
+        },
             async (data) => {
                 await emailService.sendOrderConfirmation(data);
             }
         );
 
         // 2. Order Paid -> Send Payment Receipt
-        await consumer.subscribe(
-            ExchangeNames.ORDER_EVENTS,
-            EventRoutingKeys.ORDER_PAID,
-            `${QueueNames.NOTIFICATION_SERVICE}.paid`,
+        await consumer.subscribe({
+            exchange: ExchangeNames.ORDER_EVENTS,
+            exchangeType: 'topic',
+            routingKey: EventRoutingKeys.ORDER_PAID,
+            queueName: `${QueueNames.NOTIFICATION_SERVICE}`,
+        },
             async (data) => {
                 await emailService.sendPaymentReceived(data);
             }
@@ -37,10 +39,12 @@ async function bootstrap() {
 
         // 3. Delivery Shipped -> Send Tracking Info
         // Note: We listen to DELIVERY_EVENTS exchange here
-        await consumer.subscribe(
-            ExchangeNames.DELIVERY_EVENTS,
-            EventRoutingKeys.DELIVERY_SHIPPED,
-            `${QueueNames.NOTIFICATION_SERVICE}.shipped`,
+        await consumer.subscribe({
+            exchange: ExchangeNames.DELIVERY_EVENTS,
+            exchangeType: 'topic',
+            routingKey: EventRoutingKeys.DELIVERY_SHIPPED,
+            queueName: `${QueueNames.NOTIFICATION_SERVICE}.shipped`,
+        },
             async (data) => {
                 await emailService.sendShippingUpdate(data);
             }

@@ -1,9 +1,8 @@
 import { Repository } from 'typeorm';
 import { Order, OrderStatus } from '../models/Order';
 import { OrderItem } from '../models/OrderItem';
-import { EventPublisher } from '../infrastructure/EventPublisher';
+import { EventPublisher, EventRoutingKeys } from '@tokopaedi/shared';
 import { ProductClient } from '../infrastructure/ProductClient';
-import { OrderCancelledEvent, OrderCreatedEvent } from '@tokopaedi/shared';
 
 export class OrderService {
     constructor(
@@ -61,30 +60,22 @@ export class OrderService {
         // Expiration: Set order to expire in 1 hour if not paid
         const expireAt = Date.now() + (60 * 60 * 1000);
 
-        const event: OrderCreatedEvent = {
-            eventType: 'order.created',
-            timestamp: Date.now(),
-            data: {
-                orderId: order.id,
-                userId: order.userId,
-                // Map the DB items to the Event items structure
-                items: order.items.map(i => ({
-                    productId: i.productId,
-                    quantity: i.quantity,
-                    price: Number(i.price), // Ensure it's a number, not string/decimal
-                    name: i.productName
-                })) as any, // Cast as any to bypass strict class vs interface mismatch if necessary
-
-                // The missing fields you encountered:
-                itemsPrice: itemsPrice,
-                shippingPrice: shippingPrice,
-                totalPrice: totalPrice,
-                shippingAddressId: 1, // Hardcoded for MVP (User Service usually provides this)
-                expireAt: expireAt
-            }
-        };
-
-        await this.eventPublisher.publish(event);
+        // Publish event — unified publisher wraps this in { data: ... } automatically
+        await this.eventPublisher.publish(EventRoutingKeys.ORDER_CREATED, {
+            orderId: order.id,
+            userId: order.userId,
+            items: order.items.map(i => ({
+                productId: i.productId,
+                quantity: i.quantity,
+                price: Number(i.price),
+                name: i.productName
+            })),
+            itemsPrice: itemsPrice,
+            shippingPrice: shippingPrice,
+            totalPrice: totalPrice,
+            shippingAddressId: 1, // Hardcoded for MVP
+            expireAt: expireAt
+        });
 
         return order;
     }
@@ -125,22 +116,16 @@ export class OrderService {
         await this.orderRepository.save(order);
         console.log(`Order ${orderId} cancelled. Reason: ${reason}`);
 
-        // Emit Event for Product Service to pick up
-        const event: OrderCancelledEvent = {
-            eventType: 'order.cancelled',
-            timestamp: Date.now(),
-            data: {
-                orderId: order.id,
-                userId: order.userId,
-                items: order.items.map(i => ({
-                    productId: i.productId,
-                    quantity: i.quantity,
-                    price: Number(i.price)
-                })),
-                reason: reason
-            }
-        };
-
-        await this.eventPublisher.publish(event);
+        // Publish cancellation event
+        await this.eventPublisher.publish(EventRoutingKeys.ORDER_CANCELLED, {
+            orderId: order.id,
+            userId: order.userId,
+            items: order.items.map(i => ({
+                productId: i.productId,
+                quantity: i.quantity,
+                price: Number(i.price)
+            })),
+            reason: reason
+        });
     }
 }

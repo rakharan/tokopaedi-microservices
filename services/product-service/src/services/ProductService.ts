@@ -1,7 +1,6 @@
 import { Repository } from 'typeorm';
 import { Product } from '../models/Product';
-import { EventPublisher } from '../infrastructure/EventPublisher';
-import { EventRoutingKeys, ProductCreatedEvent, ProductUpdatedEvent } from '@tokopaedi/shared';
+import { EventPublisher, EventRoutingKeys, ProductCreatedEvent, ProductUpdatedEvent } from '@tokopaedi/shared';
 
 export class ProductService {
     constructor(
@@ -29,7 +28,7 @@ export class ProductService {
                 category: product.category
             },
         };
-        await this.eventPublisher.publish(event);
+        await this.eventPublisher.publish(event.eventType, event.data);
 
         return product;
     }
@@ -97,7 +96,7 @@ export class ProductService {
                 }
             }
         };
-        await this.eventPublisher.publish(event);
+        await this.eventPublisher.publish(event.eventType, event.data);
 
         return product;
     }

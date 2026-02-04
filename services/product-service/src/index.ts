@@ -2,13 +2,11 @@ import "reflect-metadata";
 import fastify from 'fastify';
 import dotenv from 'dotenv';
 import { connectDatabase, AppDataSource } from './infrastructure/mysql';
-import { EventPublisher } from './infrastructure/EventPublisher';
 import { ProductService } from './services/ProductService';
 import { ProductController } from './controllers/ProductController';
 import { Product } from './models/Product';
 import { ProductGrpcServer } from "./controllers/ProductGrpcController";
-import { RabbitMQConsumer } from "./infrastructure/RabbitMQConsumer";
-import { EventRoutingKeys, ExchangeNames } from "@tokopaedi/shared";
+import { EventPublisher, EventRoutingKeys, ExchangeNames, RabbitMQConsumer } from "@tokopaedi/shared";
 
 dotenv.config();
 
@@ -21,21 +19,15 @@ async function bootstrap() {
 
         // 2. Connect to RabbitMQ
         const eventPublisher = new EventPublisher();
-        await eventPublisher.connect({
-            host: process.env.RABBITMQ_HOST || 'localhost',
-            port: parseInt(process.env.RABBITMQ_PORT || '5672'),
-            username: process.env.RABBITMQ_USER || 'guest',
-            password: process.env.RABBITMQ_PASS || 'guest',
-            vhost: process.env.RABBITMQ_VHOST || '/'
-        });
 
         const consumer = new RabbitMQConsumer();
-        await consumer.connect();
 
-        await consumer.subscribe(
-            ExchangeNames.ORDER_EVENTS,   // Exchange
-            EventRoutingKeys.ORDER_CANCELLED,            // Routing Key
-            'product_stock_restoration',  // Queue Name
+        await consumer.subscribe({
+            exchange: ExchangeNames.ORDER_EVENTS,   // Exchange
+            exchangeType: 'topic',                  // Exchange Type
+            routingKey: EventRoutingKeys.ORDER_CANCELLED,            // Routing Key
+            queueName: 'product_stock_restoration',  // Queue Name
+        },
             async (data) => {
                 console.log(`Received cancellation for Order ${data.orderId}. Restoring stock...`);
 

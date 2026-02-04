@@ -2,11 +2,9 @@ import "reflect-metadata";
 import fastify from 'fastify';
 import dotenv from 'dotenv';
 import { connectDatabase, AppDataSource } from './infrastructure/mysql';
-import { RabbitMQConsumer } from './infrastructure/RabbitMQConsumer';
-import { EventPublisher } from './infrastructure/EventPublisher';
 import { PaymentService } from './services/PaymentService';
 import { Payment } from './models/Payment';
-import { EventRoutingKeys, ExchangeNames } from '@tokopaedi/shared';
+import { EventPublisher, EventRoutingKeys, ExchangeNames, RabbitMQConsumer } from '@tokopaedi/shared';
 import path from "path";
 
 dotenv.config({ path: path.resolve(__dirname, `../.env`) });
@@ -21,26 +19,20 @@ async function bootstrap() {
 
     // 2. RabbitMQ Setup
     const eventPublisher = new EventPublisher();
-    await eventPublisher.connect({
-      host: process.env.RABBITMQ_HOST || 'localhost',
-      port: 5672,
-      username: process.env.RABBITMQ_USER || 'guest',
-      password: process.env.RABBITMQ_PASS || 'guest',
-      vhost: process.env.RABBITMQ_VHOST || '/'
-    });
 
     const consumer = new RabbitMQConsumer();
-    await consumer.connect();
 
     // 3. Service
     const paymentRepo = AppDataSource.getRepository(Payment);
     const paymentService = new PaymentService(paymentRepo, eventPublisher);
 
     // 4. Subscribe
-    await consumer.subscribe(
-      ExchangeNames.ORDER_EVENTS,
-      EventRoutingKeys.ORDER_CREATED,
-      'payment_order_created', // Unique queue name for Payment Service
+    await consumer.subscribe({
+      exchange: ExchangeNames.ORDER_EVENTS,
+      exchangeType: "topic",
+      routingKey: EventRoutingKeys.ORDER_CREATED,
+      queueName: "payment_order_created",
+    },
       async (data) => {
         await paymentService.processPayment(data);
       }

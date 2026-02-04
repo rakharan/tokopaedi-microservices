@@ -2,8 +2,7 @@ import { Repository } from 'typeorm';
 import { User } from '../models/User';
 import bcrypt from 'bcrypt';
 import jwt, { SignOptions } from 'jsonwebtoken'; // 1. Add SignOptions
-import { EventPublisher } from '../infrastructure/EventPublisher';
-import { UserCreatedEvent, UserVerifiedEvent } from '@tokopaedi/shared';
+import { EventPublisher, EventRoutingKeys, UserCreatedEvent, UserVerifiedEvent } from '@tokopaedi/shared';
 
 export class UserService {
     constructor(
@@ -36,7 +35,7 @@ export class UserService {
         await this.userRepository.save(user);
 
         const event: UserCreatedEvent = {
-            eventType: 'user.created',
+            eventType: EventRoutingKeys.USER_CREATED,
             timestamp: Date.now(),
             data: {
                 userId: user.id,
@@ -45,7 +44,7 @@ export class UserService {
                 level: user.level,
             },
         };
-        await this.eventPublisher.publish(event);
+        await this.eventPublisher.publish(event.eventType, event.data);
 
         const aWeekInSeconds = 24 * 7 * 3600
 
@@ -89,14 +88,14 @@ export class UserService {
         await this.userRepository.save(user);
 
         const event: UserVerifiedEvent = {
-            eventType: 'user.verified',
+            eventType: EventRoutingKeys.USER_VERIFIED,
             timestamp: Date.now(),
             data: {
                 userId: user.id,
                 email: user.email,
             },
         };
-        await this.eventPublisher.publish(event);
+        await this.eventPublisher.publish(event.eventType, event.data);
 
         return user;
     }
